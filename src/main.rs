@@ -43,11 +43,51 @@ enum Commands {
     Update,
 }
 
+fn get_java_major_version() -> Option<u32> {
+    // `java -version` prints to stderr: e.g. `openjdk version "21.0.3" ...`
+    let out = std::process::Command::new("java")
+        .arg("-version")
+        .output()
+        .ok()?;
+    let text = String::from_utf8_lossy(&out.stderr);
+    // Match patterns like `version "21.0.3"` or `version "1.8.0_xyz"`
+    for token in text.split_whitespace() {
+        let token = token.trim_matches('"');
+        let major: &str = if token.starts_with("1.") {
+            // Old-style: 1.8 → major 8
+            token.splitn(3, '.').nth(1).unwrap_or("0")
+        } else {
+            token.splitn(2, '.').next().unwrap_or("0")
+        };
+        if let Ok(n) = major.parse::<u32>() {
+            if n > 0 {
+                return Some(n);
+            }
+        }
+    }
+    None
+}
+
 fn check_java() -> Result<()> {
     let output = std::process::Command::new("java").arg("-version").output();
     match output {
         Ok(out) if out.status.success() => Ok(()),
         _ => anyhow::bail!("Java is not installed or not in PATH. Please install Java."),
+    }
+}
+
+fn require_java_version(min_major: u32) -> Result<()> {
+    check_java()?;
+    match get_java_major_version() {
+        Some(v) if v >= min_major => Ok(()),
+        Some(v) => anyhow::bail!(
+            "This server requires Java {min_major}+, but Java {v} was found.\n\
+             Please install a newer JDK: https://adoptium.net"
+        ),
+        None => {
+            println!("[warn] Could not detect Java version — proceeding anyway.");
+            Ok(())
+        }
     }
 }
 
@@ -116,6 +156,20 @@ async fn main() -> Result<()> {
                 provider, actual_version, ram
             );
 
+            // Paper 1.17+ needs Java 17, Paper 1.21+ needs Java 21
+            let min_java: u32 = if let Some(v) = actual_version
+                .split('.')
+                .nth(1)
+                .and_then(|s: &str| s.parse::<u32>().ok())
+            {
+                if v >= 21 { 21 } else if v >= 17 { 17 } else { 8 }
+            } else {
+                8
+            };
+            if provider == "paper" || provider == "fabric" {
+                require_java_version(min_java)?;
+            }
+
             // Accept EULA
             let eula_path = server_dir.join("eula.txt");
             if !eula_path.exists() {
@@ -146,11 +200,19 @@ async fn main() -> Result<()> {
                 should_run = false;
                 state.lock().await.is_running = true;
                 
+                let jar_filename = jar_path.file_name().unwrap();
+                let java_cmd = format!(
+                    "java -Xmx{ram} -jar {jar} nogui",
+                    ram = ram,
+                    jar = jar_filename.to_string_lossy()
+                );
+                println!("Running: {}", java_cmd);
+
                 let mut child = tokio::process::Command::new("java")
                     .current_dir(&server_dir)
                     .arg(format!("-Xmx{}", ram))
                     .arg("-jar")
-                    .arg(&jar_path)
+                    .arg(jar_filename)
                     .arg("nogui")
                     .stdin(std::process::Stdio::piped())
                     .stdout(std::process::Stdio::piped())
@@ -252,15 +314,30 @@ async fn main() -> Result<()> {
                 });
 
                 let status = child.wait().await?;
+                // Small delay to let log reader tasks flush their last lines
+                tokio::time::sleep(std::time::Duration::from_millis(300)).await;
                 state.lock().await.is_running = false;
                 let _ = tui_handle.await;
 
+                let exit_ok = status.success();
+
                 if restart_requested.load(std::sync::atomic::Ordering::SeqCst) {
                     should_run = true;
-                    first_boot_finished = true; // Don't auto re-restart
+                    first_boot_finished = true;
                     state.lock().await.logs.push("--- Server Restarting ---".to_string());
+                } else if exit_ok {
+                    println!("Server stopped cleanly.");
                 } else {
-                    println!("Server exited cleanly with status: {:?}", status);
+                    // Dump the captured logs so the user can see why it crashed
+                    eprintln!("\n[mc-cli] Server exited with error status: {:?}", status);
+                    eprintln!("[mc-cli] --- Last server output ---");
+                    let logs = state.lock().await.logs.clone();
+                    let start = logs.len().saturating_sub(40);
+                    for line in &logs[start..] {
+                        eprintln!("{}", line);
+                    }
+                    eprintln!("[mc-cli] --- End of output ---");
+                    eprintln!("[mc-cli] Tip: check that your Java version matches the server version.");
                 }
             }
         }
