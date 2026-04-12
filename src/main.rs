@@ -266,16 +266,60 @@ async fn main() -> Result<()> {
         }
         Commands::Update => {
             println!("Updating mc-cli to the latest version...");
+
+            // Install to a temp directory to avoid overwriting the running exe
+            let temp_dir = std::env::temp_dir().join("mc-cli-update");
+            std::fs::create_dir_all(&temp_dir)?;
+
             let status = std::process::Command::new("cargo")
-                .args(["install", "--git", "https://github.com/Mosuzzzz/mc-cli.git"])
+                .args([
+                    "install",
+                    "--git", "https://github.com/Mosuzzzz/mc-cli.git",
+                    "--root", temp_dir.to_str().unwrap(),
+                ])
                 .status();
-                
+
             match status {
-                Ok(status) if status.success() => {
-                    println!("Successfully updated mc-cli. Please restart the application.");
+                Ok(s) if s.success() => {
+                    let new_bin = temp_dir.join("bin").join("mc-cli.exe");
+                    let current_exe = std::env::current_exe()?;
+
+                    if !new_bin.exists() {
+                        anyhow::bail!("Built binary not found at {:?}", new_bin);
+                    }
+
+                    // On Windows we cannot overwrite a running .exe directly.
+                    // Write a small batch script that waits for this process to
+                    // exit and then performs the copy, then launch it detached.
+                    let pid = std::process::id();
+                    let bat_path = std::env::temp_dir().join("mc-cli-replace.bat");
+                    let bat = format!(
+                        "@echo off\r\n\
+                        :wait\r\n\
+                        tasklist /FI \"PID eq {pid}\" 2>NUL | find \"{pid}\" >NUL\r\n\
+                        if not errorlevel 1 (\r\n\
+                            timeout /t 1 /nobreak >NUL\r\n\
+                            goto wait\r\n\
+                        )\r\n\
+                        copy /y \"{src}\" \"{dst}\"\r\n\
+                        echo mc-cli updated successfully!\r\n\
+                        del \"%~f0\"\r\n",
+                        pid = pid,
+                        src = new_bin.display(),
+                        dst = current_exe.display(),
+                    );
+                    std::fs::write(&bat_path, bat)?;
+
+                    // Launch the batch script minimised and detached
+                    std::process::Command::new("cmd")
+                        .args(["/c", "start", "/min", "", bat_path.to_str().unwrap()])
+                        .spawn()?;
+
+                    println!("Download complete! mc-cli will finish updating after this process exits.");
+                    println!("Please re-run mc-cli to use the new version.");
                 }
-                Ok(status) => {
-                    anyhow::bail!("Failed to update mc-cli. Cargo exited with status: {}", status);
+                Ok(s) => {
+                    anyhow::bail!("Failed to build mc-cli. Cargo exited with status: {}", s);
                 }
                 Err(e) => {
                     anyhow::bail!("Failed to execute cargo. Is Rust installed? Error: {}", e);
