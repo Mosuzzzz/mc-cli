@@ -30,7 +30,9 @@ pub async fn list_versions() -> Result<Vec<String>> {
         .json()
         .await
         .context("Failed to parse PaperMC API response")?;
-    Ok(data.versions)
+    let mut versions = data.versions;
+    versions.reverse();
+    Ok(versions)
 }
 
 pub async fn download(version: &str, dest: &std::path::Path) -> Result<()> {

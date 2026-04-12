@@ -22,6 +22,7 @@ pub async fn list_versions() -> Result<Vec<String>> {
         .await
         .context("Failed to parse Fabric API response")?;
 
+    // API returns newest-first; keep only stable versions
     let stables = versions
         .into_iter()
         .filter(|v| v.stable)

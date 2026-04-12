@@ -292,12 +292,16 @@ async fn main() -> Result<()> {
             println!("Fetching versions for {}...", provider);
 
             let versions = p.list_versions().await?;
-            println!("Available versions:");
-            for v in versions.iter().rev().take(20) {
-                println!("- {}", v);
+            println!("Available versions (newest first):");
+            for (i, v) in versions.iter().take(20).enumerate() {
+                if i == 0 {
+                    println!("- {} ★ latest", v);
+                } else {
+                    println!("- {}", v);
+                }
             }
             if versions.len() > 20 {
-                println!("... and {} more", versions.len() - 20);
+                println!("... and {} more (use --provider to filter)", versions.len() - 20);
             }
         }
     }

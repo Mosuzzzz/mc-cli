@@ -39,7 +39,7 @@ pub async fn list_versions() -> Result<Vec<String>> {
         .await
         .context("Failed to parse Mojang API response")?;
 
-    // Only return release versions for now
+    // Return release versions, API returns newest-first already
     let releases = data
         .versions
         .into_iter()
