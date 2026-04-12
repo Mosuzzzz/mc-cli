@@ -21,6 +21,7 @@ pub struct AppState {
     pub ram_usage_mb: u64,
     pub online_players: i32,
     pub input: String,
+    pub is_running: bool,
 }
 
 pub async fn run_dashboard(
@@ -49,6 +50,9 @@ async fn run_ui_loop(
 ) -> Result<()> {
     loop {
         let app_state_lock = state.lock().await;
+        if !app_state_lock.is_running {
+            break;
+        }
         terminal.draw(|f| {
             let size = f.area();
             let chunks = Layout::default()
