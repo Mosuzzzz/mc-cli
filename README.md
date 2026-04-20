@@ -34,12 +34,12 @@
 
 **macOS/Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/Mosuzzzz/mc-cli/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Mosuzzzz/mc-cli/master/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/Mosuzzzz/mc-cli/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/Mosuzzzz/mc-cli/master/install.ps1 | iex
 ```
 
 ### Install from source
