@@ -30,6 +30,18 @@
 | [Rust & Cargo](https://rustup.rs/) | Edition 2024 (stable) |
 | Java | 8+ (21+ for MC 1.21+) |
 
+### Quick Install
+
+**macOS/Linux:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Mosuzzzz/mc-cli/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/Mosuzzzz/mc-cli/main/install.ps1 | iex
+```
+
 ### Install from source
 
 ```bash
@@ -106,7 +118,19 @@ mc-cli update --version 1.21.4 --provider paper
 mc-cli update
 ```
 
-This builds the latest binary from GitHub and swaps it in after mc-cli exits (no "Access Denied" issues on Windows).
+This builds the latest binary from GitHub and swaps it in. On Windows, it uses a background task to replace the exe after mc-cli exits (avoiding "Access Denied" errors). On Linux/macOS, the update is applied immediately.
+
+### Uninstall
+
+To remove `mc-cli` from your system:
+
+```bash
+mc-cli uninstall
+```
+
+Alternatively, use the provided scripts if you installed via a script:
+- **macOS/Linux**: `./uninstall.sh`
+- **Windows**: `.\uninstall.ps1`
 
 ---
 
@@ -137,6 +161,7 @@ Commands:
   start          Start a Minecraft server
   list-versions  List available versions for a provider
   update         Update the server jar or mc-cli itself
+  uninstall      Uninstall mc-cli from the system
   help           Print help
 
 start [DIR] [OPTIONS]
@@ -181,6 +206,3 @@ Contributions are welcome! Please keep in mind:
 
 ---
 
-## 📄 License
-
-Open source. See [LICENSE](LICENSE) for details.

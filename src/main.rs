@@ -41,6 +41,8 @@ enum Commands {
     },
     /// Update mc-cli to the latest version
     Update,
+    /// Uninstall mc-cli from the system
+    Uninstall,
 }
 
 fn get_java_major_version() -> Option<u32> {
@@ -358,42 +360,50 @@ async fn main() -> Result<()> {
 
             match status {
                 Ok(s) if s.success() => {
-                    let new_bin = temp_dir.join("bin").join("mc-cli.exe");
+                    let bin_name = if cfg!(windows) { "mc-cli.exe" } else { "mc-cli" };
+                    let new_bin = temp_dir.join("bin").join(bin_name);
                     let current_exe = std::env::current_exe()?;
 
                     if !new_bin.exists() {
                         anyhow::bail!("Built binary not found at {:?}", new_bin);
                     }
 
-                    // On Windows we cannot overwrite a running .exe directly.
-                    // Write a small batch script that waits for this process to
-                    // exit and then performs the copy, then launch it detached.
-                    let pid = std::process::id();
-                    let bat_path = std::env::temp_dir().join("mc-cli-replace.bat");
-                    let bat = format!(
-                        "@echo off\r\n\
-                        :wait\r\n\
-                        tasklist /FI \"PID eq {pid}\" 2>NUL | find \"{pid}\" >NUL\r\n\
-                        if not errorlevel 1 (\r\n\
-                            timeout /t 1 /nobreak >NUL\r\n\
-                            goto wait\r\n\
-                        )\r\n\
-                        copy /y \"{src}\" \"{dst}\"\r\n\
-                        echo mc-cli updated successfully!\r\n\
-                        del \"%~f0\"\r\n",
-                        pid = pid,
-                        src = new_bin.display(),
-                        dst = current_exe.display(),
-                    );
-                    std::fs::write(&bat_path, bat)?;
+                    #[cfg(windows)]
+                    {
+                        // On Windows we cannot overwrite a running .exe directly.
+                        let pid = std::process::id();
+                        let bat_path = std::env::temp_dir().join("mc-cli-replace.bat");
+                        let bat = format!(
+                            "@echo off\r\n\
+                            :wait\r\n\
+                            tasklist /FI \"PID eq {pid}\" 2>NUL | find \"{pid}\" >NUL\r\n\
+                            if not errorlevel 1 (\r\n\
+                                timeout /t 1 /nobreak >NUL\r\n\
+                                goto wait\r\n\
+                            )\r\n\
+                            copy /y \"{src}\" \"{dst}\"\r\n\
+                            echo mc-cli updated successfully!\r\n\
+                            del \"%~f0\"\r\n",
+                            pid = pid,
+                            src = new_bin.display(),
+                            dst = current_exe.display(),
+                        );
+                        std::fs::write(&bat_path, bat)?;
 
-                    // Launch the batch script minimised and detached
-                    std::process::Command::new("cmd")
-                        .args(["/c", "start", "/min", "", bat_path.to_str().unwrap()])
-                        .spawn()?;
+                        std::process::Command::new("cmd")
+                            .args(["/c", "start", "/min", "", bat_path.to_str().unwrap()])
+                            .spawn()?;
 
-                    println!("Download complete! mc-cli will finish updating after this process exits.");
-                    println!("Please re-run mc-cli to use the new version.");
+                        println!("Download complete! mc-cli will finish updating after this process exits.");
+                        println!("Please re-run mc-cli to use the new version.");
+                    }
+
+                    #[cfg(not(windows))]
+                    {
+                        // On Unix we can swap the binary while it's running
+                        std::fs::rename(&new_bin, &current_exe)?;
+                        println!("mc-cli updated successfully to the latest version!");
+                    }
                 }
                 Ok(s) => {
                     anyhow::bail!("Failed to build mc-cli. Cargo exited with status: {}", s);
@@ -423,6 +433,43 @@ async fn main() -> Result<()> {
             }
             if versions.len() > 20 {
                 println!("... and {} more (use --provider to filter)", versions.len() - 20);
+            }
+        }
+        Commands::Uninstall => {
+            println!("Proceeding to uninstall mc-cli...");
+            let current_exe = std::env::current_exe()?;
+            
+            #[cfg(windows)]
+            {
+                let pid = std::process::id();
+                let bat_path = std::env::temp_dir().join("mc-cli-uninstall.bat");
+                let bat = format!(
+                    "@echo off\r\n\
+                    :wait\r\n\
+                    tasklist /FI \"PID eq {pid}\" 2>NUL | find \"{pid}\" >NUL\r\n\
+                    if not errorlevel 1 (\r\n\
+                        timeout /t 1 /nobreak >NUL\r\n\
+                        goto wait\r\n\
+                    )\r\n\
+                    del /f /q \"{exe}\"\r\n\
+                    echo mc-cli has been uninstalled successfully.\r\n\
+                    del \"%~f0\"\r\n",
+                    pid = pid,
+                    exe = current_exe.display(),
+                );
+                std::fs::write(&bat_path, bat)?;
+
+                std::process::Command::new("cmd")
+                    .args(["/c", "start", "/min", "", bat_path.to_str().unwrap()])
+                    .spawn()?;
+                
+                println!("Uninstalling... mc-cli will be removed after this process exits.");
+            }
+
+            #[cfg(not(windows))]
+            {
+                std::fs::remove_file(&current_exe)?;
+                println!("mc-cli has been uninstalled successfully.");
             }
         }
     }
