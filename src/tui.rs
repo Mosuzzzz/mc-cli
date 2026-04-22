@@ -2,15 +2,15 @@ use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
+    Terminal,
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
-    Terminal,
 };
 use std::{io, sync::Arc};
 use tokio::sync::Mutex;
@@ -57,7 +57,11 @@ async fn run_ui_loop(
             let size = f.area();
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([Constraint::Length(3), Constraint::Min(0), Constraint::Length(3)])
+                .constraints([
+                    Constraint::Length(3),
+                    Constraint::Min(0),
+                    Constraint::Length(3),
+                ])
                 .split(size);
 
             let header_chunks = Layout::default()
@@ -118,8 +122,11 @@ async fn run_ui_loop(
 
             // Input Bar
             let input_text = format!("> {}", app_state_lock.input);
-            let input_block = Paragraph::new(input_text)
-                .block(Block::default().borders(Borders::ALL).title(" Input Command (Enter to execute) "));
+            let input_block = Paragraph::new(input_text).block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Input Command (Enter to execute) "),
+            );
             f.render_widget(input_block, chunks[2]);
         })?;
         drop(app_state_lock);
@@ -133,7 +140,7 @@ async fn run_ui_loop(
                 if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
                     break;
                 }
-                
+
                 let mut app_state = state.lock().await;
                 match key.code {
                     KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
