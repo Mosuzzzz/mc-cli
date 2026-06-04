@@ -22,9 +22,16 @@ struct PaperDownload {
     sha256: String,
 }
 
+fn api_client() -> Result<reqwest::Client> {
+    Ok(reqwest::Client::builder()
+        .user_agent(concat!("mc-cli/", env!("CARGO_PKG_VERSION")))
+        .timeout(std::time::Duration::from_secs(30))
+        .build()?)
+}
+
 pub async fn list_versions() -> Result<Vec<String>> {
     let url = "https://api.papermc.io/v2/projects/paper";
-    let client = reqwest::Client::new();
+    let client = api_client()?;
     let response = client.get(url).send().await?.error_for_status()?;
     let data: PaperProjectResponse = response
         .json()
@@ -37,7 +44,10 @@ pub async fn list_versions() -> Result<Vec<String>> {
 
 pub async fn download(version: &str, dest: &std::path::Path) -> Result<()> {
     // 1. Get latest build
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .user_agent(concat!("mc-cli/", env!("CARGO_PKG_VERSION")))
+        .timeout(std::time::Duration::from_secs(300))
+        .build()?;
     let url = format!(
         "https://api.papermc.io/v2/projects/paper/versions/{}",
         version

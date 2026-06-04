@@ -30,9 +30,16 @@ struct ServerDownload {
     sha1: String,
 }
 
+fn api_client() -> Result<reqwest::Client> {
+    Ok(reqwest::Client::builder()
+        .user_agent(concat!("mc-cli/", env!("CARGO_PKG_VERSION")))
+        .timeout(std::time::Duration::from_secs(30))
+        .build()?)
+}
+
 pub async fn list_versions() -> Result<Vec<String>> {
     let url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
-    let client = reqwest::Client::new();
+    let client = api_client()?;
     let response = client.get(url).send().await?.error_for_status()?;
     let data: ManifestResponse = response
         .json()
@@ -53,7 +60,10 @@ pub async fn list_versions() -> Result<Vec<String>> {
 pub async fn download(version: &str, dest: &std::path::Path) -> Result<()> {
     // 1. Fetch version manifest
     let manifest_url = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .user_agent(concat!("mc-cli/", env!("CARGO_PKG_VERSION")))
+        .timeout(std::time::Duration::from_secs(300))
+        .build()?;
     let res: ManifestResponse = client
         .get(manifest_url)
         .send()

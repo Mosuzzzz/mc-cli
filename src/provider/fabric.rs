@@ -13,9 +13,16 @@ struct SubVersion {
     stable: bool,
 }
 
+fn api_client() -> Result<reqwest::Client> {
+    Ok(reqwest::Client::builder()
+        .user_agent(concat!("mc-cli/", env!("CARGO_PKG_VERSION")))
+        .timeout(std::time::Duration::from_secs(30))
+        .build()?)
+}
+
 pub async fn list_versions() -> Result<Vec<String>> {
     let url = "https://meta.fabricmc.net/v2/versions/game";
-    let client = reqwest::Client::new();
+    let client = api_client()?;
     let response = client.get(url).send().await?.error_for_status()?;
     let versions: Vec<FabricGameVersion> = response
         .json()
@@ -33,7 +40,10 @@ pub async fn list_versions() -> Result<Vec<String>> {
 }
 
 pub async fn download(version: &str, dest: &std::path::Path) -> Result<()> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .user_agent(concat!("mc-cli/", env!("CARGO_PKG_VERSION")))
+        .timeout(std::time::Duration::from_secs(300))
+        .build()?;
 
     // 1. Get latest stable loader
     let loader_url = "https://meta.fabricmc.net/v2/versions/loader";
@@ -73,8 +83,19 @@ pub async fn download(version: &str, dest: &std::path::Path) -> Result<()> {
 
     let mut file = std::fs::File::create(dest)?;
     let bytes = response.bytes().await?;
-    // Fabric meta API does not expose a checksum for the server jar endpoint
-    println!("  {:.1} MB downloaded.", bytes.len() as f64 / 1_048_576.0);
+
+    // Fabric meta API does not expose a checksum — display the hash for manual verification.
+    use sha2::{Digest, Sha256};
+    let hash = Sha256::digest(&bytes)
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>();
+    println!(
+        "  {:.1} MB downloaded.",
+        bytes.len() as f64 / 1_048_576.0
+    );
+    println!("  SHA-256: {hash}");
+    println!("  (Fabric meta API provides no checksum — verify the above hash manually if needed)");
 
     use std::io::Write;
     file.write_all(&bytes)?;
