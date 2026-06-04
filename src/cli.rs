@@ -27,6 +27,10 @@ pub enum Commands {
         /// Server provider (e.g., paper, vanilla, fabric)
         #[arg(short, long, default_value = "paper")]
         provider: String,
+
+        /// Enable online mode (requires premium Minecraft accounts). Default is offline mode.
+        #[arg(long, default_value = "false")]
+        online: bool,
     },
     /// List available versions for a provider
     ListVersions {

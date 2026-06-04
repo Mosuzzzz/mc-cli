@@ -84,6 +84,7 @@ pub async fn download(version: &str, dest: &std::path::Path) -> Result<()> {
     let mut hasher = Sha256::new();
 
     let bytes = response.bytes().await?;
+    println!("  {:.1} MB — verifying SHA-256...", bytes.len() as f64 / 1_048_576.0);
     hasher.update(&bytes);
 
     let hash = hasher

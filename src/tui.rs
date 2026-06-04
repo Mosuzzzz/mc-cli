@@ -15,13 +15,25 @@ use ratatui::{
 use std::{io, sync::Arc};
 use tokio::sync::Mutex;
 
+const MAX_LOGS: usize = 2000;
+
 pub struct AppState {
     pub logs: Vec<String>,
     pub cpu_usage: f32,
     pub ram_usage_mb: u64,
-    pub online_players: i32,
+    pub online_players: u32,
     pub input: String,
     pub is_running: bool,
+}
+
+impl AppState {
+    pub fn push_log(&mut self, line: String) {
+        self.logs.push(line);
+        if self.logs.len() > MAX_LOGS {
+            let excess = self.logs.len() - MAX_LOGS;
+            self.logs.drain(..excess);
+        }
+    }
 }
 
 pub async fn run_dashboard(

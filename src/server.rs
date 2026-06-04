@@ -15,7 +15,7 @@ pub async fn run_server(
         logs: Vec::new(),
         cpu_usage: 0.0,
         ram_usage_mb: 0,
-        online_players: 0,
+        online_players: 0u32,
         input: String::new(),
         is_running: true,
     }));
@@ -64,7 +64,7 @@ pub async fn run_server(
                 if line.contains("joined the game") {
                     st.online_players += 1;
                 } else if line.contains("left the game") {
-                    st.online_players -= 1;
+                    st.online_players = st.online_players.saturating_sub(1);
                 }
 
                 // Handle user request to restart on first boot
@@ -72,10 +72,9 @@ pub async fn run_server(
                     auto_trigger = true;
                     rr_auto.store(true, Ordering::SeqCst);
                     let _ = auto_tx.send("stop".to_string());
-                    st.logs
-                        .push("--- First time auto-restart triggered for client ---".to_string());
+                    st.push_log("--- First time auto-restart triggered for client ---".to_string());
                 }
-                st.logs.push(line);
+                st.push_log(line);
             }
         });
 
@@ -85,7 +84,7 @@ pub async fn run_server(
             let mut reader = tokio::io::BufReader::new(stderr).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 let mut st = state_c2.lock().await;
-                st.logs.push(line);
+                st.push_log(line);
             }
         });
 
@@ -149,8 +148,7 @@ pub async fn run_server(
             state
                 .lock()
                 .await
-                .logs
-                .push("--- Server Restarting ---".to_string());
+                .push_log("--- Server Restarting ---".to_string());
         } else if exit_ok {
             println!("Server stopped cleanly.");
         } else {

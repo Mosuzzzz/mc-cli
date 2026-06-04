@@ -21,7 +21,9 @@ async fn main() -> Result<()> {
             version,
             ram,
             provider,
+            online,
         } => {
+            validate_ram(&ram)?;
             java::check_java()?;
 
             let base_dir = PathBuf::from(&dir);
@@ -97,9 +99,7 @@ async fn main() -> Result<()> {
                 8
             };
 
-            if provider == "paper" || provider == "fabric" {
-                java::require_java_version(min_java)?;
-            }
+            java::require_java_version(min_java)?;
 
             // Accept EULA
             let eula_path = server_dir.join("eula.txt");
@@ -108,11 +108,11 @@ async fn main() -> Result<()> {
                 std::fs::write(&eula_path, "eula=true\n")?;
             }
 
-            // Client support (Offline mode by default)
             let server_props = server_dir.join("server.properties");
             if !server_props.exists() {
-                println!("Generating server.properties (online-mode=false) for client support...");
-                std::fs::write(&server_props, "online-mode=false\n")?;
+                let mode = if online { "true" } else { "false" };
+                println!("Generating server.properties (online-mode={mode})...");
+                std::fs::write(&server_props, format!("online-mode={mode}\n"))?;
             }
 
             server::run_server(server_dir, jar_path, ram, is_first_run).await?;
@@ -128,6 +128,21 @@ async fn main() -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+fn validate_ram(ram: &str) -> Result<()> {
+    if ram.is_empty() {
+        anyhow::bail!("RAM value cannot be empty");
+    }
+    let last = &ram[ram.len() - 1..];
+    let num = &ram[..ram.len() - 1];
+    if !matches!(last.to_uppercase().as_str(), "G" | "M" | "K") || num.is_empty() || num.parse::<u64>().is_err() {
+        anyhow::bail!(
+            "Invalid RAM format '{}'. Use a number followed by G or M (e.g., 2G, 512M)",
+            ram
+        );
+    }
     Ok(())
 }
 

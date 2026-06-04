@@ -13,7 +13,7 @@
 - 🔄 **Auto-restart on first boot** — automatically restarts after initial world generation so clients can connect immediately
 - 📦 **Multi-provider support** — Paper, Vanilla, and Fabric
 - ✅ **Checksum verification** — SHA-1/SHA-256 validated downloads
-- 🔓 **Offline mode by default** — `online-mode=false` pre-configured so both premium and non-premium clients can join
+- 🔓 **Offline mode by default** — `online-mode=false` pre-configured; use `--online` flag to require premium accounts
 - ♻️ **In-TUI restart** — type `restart` in the console bar without stopping mc-cli
 - 🔁 **Self-updating** — `mc-cli update` fetches and installs the latest version from GitHub
 - ☕ **Java version guard** — warns you if your Java is too old for the requested server version
@@ -102,16 +102,6 @@ mc-cli list-versions --provider vanilla
 
 Output shows the latest version at the top, marked with `★ latest`.
 
-### Update the server version
-
-```bash
-# Downloads the new jar, removes the old one
-mc-cli update --version 1.21.4
-mc-cli update --version 1.21.4 --provider paper
-
-# Provider is auto-detected from your existing jar if omitted
-```
-
 ### Update mc-cli itself
 
 ```bash
@@ -169,15 +159,12 @@ start [DIR] [OPTIONS]
   -v, --version        Server version to download/use
   -r, --ram            RAM to allocate (default: 2G)
   -p, --provider       Provider: paper | vanilla | fabric (default: paper)
+  --online             Enable online mode (require premium accounts; default: offline)
 
 list-versions [OPTIONS]
   -p, --provider       Provider to query (default: paper)
 
-update [DIR] [OPTIONS]
-  [DIR]                Target directory (default: .)
-  -v, --version        New server version to download
-  -p, --provider       Provider (auto-detected if omitted)
-  (no args)            Update mc-cli itself from GitHub
+update                 Update mc-cli itself from GitHub
 ```
 
 ---

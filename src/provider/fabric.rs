@@ -73,6 +73,8 @@ pub async fn download(version: &str, dest: &std::path::Path) -> Result<()> {
 
     let mut file = std::fs::File::create(dest)?;
     let bytes = response.bytes().await?;
+    // Fabric meta API does not expose a checksum for the server jar endpoint
+    println!("  {:.1} MB downloaded.", bytes.len() as f64 / 1_048_576.0);
 
     use std::io::Write;
     file.write_all(&bytes)?;
