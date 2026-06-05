@@ -12,9 +12,15 @@ case "${OS}-${ARCH}" in
     darwin-x86_64)  TARGET="x86_64-apple-darwin" ;;
     darwin-arm64)   TARGET="aarch64-apple-darwin" ;;
     *)
-        echo "Error: Unsupported platform ${OS}-${ARCH}."
-        echo "Please build from source: cargo install --git https://github.com/Mosuzzzz/mc-cli.git"
-        exit 1
+        echo "Unsupported platform ${OS}-${ARCH}. Falling back to cargo install..."
+        if ! command -v cargo &>/dev/null; then
+            echo "Error: Rust is not installed."
+            echo "Install Rust from https://rustup.rs/ then re-run this script."
+            exit 1
+        fi
+        cargo install --git https://github.com/Mosuzzzz/mc-cli.git --locked
+        echo "mc-cli installed via cargo."
+        exit 0
         ;;
 esac
 
@@ -26,8 +32,15 @@ TAG=$(curl -sSf \
     | grep '"tag_name"' | head -1 | cut -d'"' -f4)
 
 if [ -z "$TAG" ]; then
-    echo "Error: Could not fetch the latest release tag from GitHub."
-    exit 1
+    echo "No release found yet. Falling back to cargo install..."
+    if ! command -v cargo &>/dev/null; then
+        echo "Error: Rust is not installed either."
+        echo "Install Rust from https://rustup.rs/ then re-run this script, or wait for a release to be published."
+        exit 1
+    fi
+    cargo install --git https://github.com/Mosuzzzz/mc-cli.git --locked
+    echo "mc-cli installed via cargo."
+    exit 0
 fi
 echo "Latest release: $TAG  (platform: $TARGET)"
 
