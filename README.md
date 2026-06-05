@@ -27,15 +27,15 @@
 
 **macOS/Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/Mosuzzzz/mc-cli/master/install.sh | bash
+curl -sSL https://github.com/Mosuzzzz/mc-cli/releases/latest/download/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/Mosuzzzz/mc-cli/master/install.ps1 | iex
+irm https://github.com/Mosuzzzz/mc-cli/releases/latest/download/install.ps1 | iex
 ```
 
-The install script downloads the pre-built binary for your platform and verifies its SHA-256 checksum before installing.
+The install script is bundled with each release — not fetched from the master branch. It verifies the binary's SHA-256 checksum before installing.
 
 ### Install from source
 

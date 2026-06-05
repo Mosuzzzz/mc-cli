@@ -76,6 +76,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts/
@@ -87,6 +89,14 @@ jobs:
           sha256sum mc-cli-* > sha256sums.txt
           echo "=== sha256sums.txt ==="
           cat sha256sums.txt
+
+      - name: Bundle install scripts into release
+        run: |
+          TAG="${{ github.ref_name }}"
+          # Rewrite install scripts to use pinned release URL instead of master
+          sed "s|/master/install.sh|/releases/download/${TAG}/install.sh|g" install.sh > artifacts/install.sh
+          sed "s|/master/install.ps1|/releases/download/${TAG}/install.ps1|g" install.ps1 > artifacts/install.ps1
+          chmod +x artifacts/install.sh
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
