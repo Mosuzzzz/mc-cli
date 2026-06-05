@@ -23,7 +23,7 @@ jobs:
             artifact: mc-cli-aarch64-unknown-linux-gnu
 
           - target: x86_64-apple-darwin
-            os: macos-13
+            os: macos-latest
             artifact: mc-cli-x86_64-apple-darwin
 
           - target: aarch64-apple-darwin
